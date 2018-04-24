@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
   MPI_Comm_size(FTI_COMM_WORLD, &processes);
   MPI_Comm_rank(FTI_COMM_WORLD, &rank_id);
 
+  double start = MPI_Wtime();
+
   FTI_InitType(&U_LL, sizeof(unsigned long long));
 
   unsigned long long vector_size = strtoull(argv[1], NULL, 10);
@@ -138,6 +140,8 @@ int main(int argc, char *argv[])
     }
 
     fprintf(stdout, "Sum: %llu\n", global_sum);
+    double end = MPI_Wtime();
+    fprintf(stdout, "Time: %f seconds\n", end - start);
   }
   else
   {
