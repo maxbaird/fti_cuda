@@ -126,12 +126,14 @@ int main(int argc, char *argv[])
       global_sum = global_sum + local_sum;
     }
 
-    if((2 * vector_size * processes * iterations) == global_sum)
+    unsigned long long expected_global_sum = 2 * vector_size * processes * iterations;
+    if(expected_global_sum == global_sum)
     {
       fprintf(stdout, "Result: Pass\n");
     }
     else
     {
+      fprintf(stderr, "%llu != %llu\n", expected_global_sum, global_sum);
       fprintf(stderr, "Result: Failed\n");
     }
 

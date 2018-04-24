@@ -11,9 +11,9 @@ To compile the following environment variables need to be set:
 + FTI\_HOME
 
 These variables should point to the home directory of MPI, CUDA and FTI
-respectively.
+respectively. To compile run `make`.
 
-## Runing
+## Running
 Execute the binary with the following two arguments
 1. vector-size
 2. iterations
@@ -28,4 +28,4 @@ information on FTI see their [github](https://github.com/leobago/fti) repository
 The following will spawn 8 MPI processes and each process will execute their
 kernel 10 times.
 
-`mpirun -8 ./fti_cuda.out 10000 10`
+`mpirun -np 8 ./fti_cuda.out 10000 10`
