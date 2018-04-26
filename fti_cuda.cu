@@ -4,6 +4,8 @@
 #include <mpi.h>
 #include <fti.h>
 
+#define MASTER 0
+
 #define CUDA_ERROR_CHECK(fun)                                                                   \
 do{                                                                                             \
     cudaError_t err = fun;                                                                      \
@@ -63,6 +65,16 @@ int main(int argc, char *argv[])
 
   unsigned long long vector_size = strtoull(argv[1], NULL, 10);
   unsigned long long iterations = strtoull(argv[2], NULL, 10);
+
+  unsigned long long local_vector_size = vector_size / processes;
+
+  //If vector cannot be evenly divided between processes 
+  //then the last process handles the excess
+  if(rank_id == (processes - 1))
+  {
+    local_vector_size = local_vector_size + (vector_size % processes);
+  }
+
   size_t size = vector_size * sizeof(unsigned short int);
 
   unsigned short int *h_a = (unsigned short int *)malloc(size);
@@ -118,7 +130,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if(rank_id == 0)
+  if(rank_id == MASTER)
   {
     unsigned long long global_sum = local_sum;
     int i = 0;
