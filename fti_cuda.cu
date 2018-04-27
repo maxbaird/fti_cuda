@@ -28,7 +28,7 @@ do{                                                                             
 
 FTIT_type U_LL;
 
-__global__ void vector_add(const unsigned short int *a, const unsigned short int *b, unsigned short int *c, unsigned long long n)
+__global__ void vector_add(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
 {
   /* Get our global thread ID */
   unsigned long long id = blockIdx.x*blockDim.x+threadIdx.x;
@@ -65,21 +65,28 @@ int main(int argc, char *argv[])
 
   unsigned long long vector_size = strtoull(argv[1], NULL, 10);
   unsigned long long iterations = strtoull(argv[2], NULL, 10);
+  unsigned long long lower = 0;
+  unsigned long long upper = 0;
+  unsigned long long n_items = 0;
+  vector_size++;
 
   unsigned long long local_vector_size = vector_size / processes;
 
-  //If vector cannot be evenly divided between processes 
-  //then the last process handles the excess
+  lower = (local_vector_size * rank_id) + 0;
+  upper = lower + (local_vector_size - 1);
+
   if(rank_id == (processes - 1))
   {
-    local_vector_size = local_vector_size + (vector_size % processes);
+    upper = upper + (vector_size % processes);
   }
 
-  size_t size = vector_size * sizeof(unsigned short int);
+  n_items = (upper - lower) + 1;
 
-  unsigned short int *h_a = (unsigned short int *)malloc(size);
-  unsigned short int *h_b = (unsigned short int *)malloc(size);
-  unsigned short int *h_c = (unsigned short int *)malloc(size);
+  size_t size = n_items * sizeof(unsigned long long);
+
+  unsigned long long *h_a = (unsigned long long *)malloc(size);
+  unsigned long long *h_b = (unsigned long long *)malloc(size);
+  unsigned long long *h_c = (unsigned long long *)malloc(size);
 
   if(h_a == NULL || h_b == NULL || h_c == NULL)
   {
@@ -87,9 +94,9 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
-  unsigned short int *d_a = NULL;
-  unsigned short int *d_b = NULL;
-  unsigned short int *d_c = NULL;
+  unsigned long long *d_a = NULL;
+  unsigned long long *d_b = NULL;
+  unsigned long long *d_c = NULL;
 
   unsigned long long i = 0;
   unsigned long long j = 0;
@@ -99,32 +106,34 @@ int main(int argc, char *argv[])
   CUDA_ERROR_CHECK(cudaMalloc((void **)&d_b, size));
   CUDA_ERROR_CHECK(cudaMalloc((void **)&d_c, size));
 
+  unsigned long long idx = 0;
   /* Initialize vectors */
-  for(i = 0; i < vector_size; i++)
+  for(i = lower; i <= upper; i++)
   {
-    h_a[i] = 1;
-    h_b[i] = 1; 
+    h_a[idx] = i;
+    h_b[idx] = i; 
+    idx++;
   } 
 
   CUDA_ERROR_CHECK(cudaMemcpy((void *)d_a, (const void*)h_a, size, cudaMemcpyHostToDevice));
   CUDA_ERROR_CHECK(cudaMemcpy((void *)d_b, (const void*)h_b, size, cudaMemcpyHostToDevice));
  
   unsigned long long block_size = 1024; 
-  unsigned long long grid_size = (unsigned long long)(ceill((long double)vector_size/(long double)block_size));
+  unsigned long long grid_size = (unsigned long long)(ceill((long double)n_items/(long double)block_size));
 
-  FTI_Protect(0, &i, 1, U_LL);
-  FTI_Protect(1, &local_sum, 1, U_LL);
+  FTI_Protect(0, &i, NULL, 1, U_LL);
+  FTI_Protect(1, &local_sum, NULL, 1, U_LL);
 
   for(i = 0; i < iterations; i++)
   {
     FTI_Snapshot();
-    vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, vector_size);
+    vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
   
     CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
  
-    for(j = 0; j < vector_size; j++)
+    for(j = 0; j < n_items; j++)
     {
       local_sum = local_sum + h_c[j];
     }
@@ -140,7 +149,12 @@ int main(int argc, char *argv[])
       global_sum = global_sum + local_sum;
     }
 
-    unsigned long long expected_global_sum = 2 * vector_size * processes * iterations;
+    unsigned long long expected_global_sum = 0;// = 2 * vector_size * processes * iterations;
+    unsigned long long j = 0;
+    for(j = 0; j < vector_size; j++)
+    {
+      expected_global_sum = expected_global_sum + (j + j);
+    }
     if(expected_global_sum == global_sum)
     {
       fprintf(stdout, "Result: Pass\n");
