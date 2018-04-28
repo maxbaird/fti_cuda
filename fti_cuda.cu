@@ -26,26 +26,40 @@ do{                                                                             
   }                                                                                             \
 }while(0);
 
+/*
+   Holds the chunk information for each process.
+*/
 typedef struct {
-  unsigned long long lower;
-  unsigned long long upper;
-  unsigned long long n_items;
+  unsigned long long lower; /* Index in vector from which the current MPI process should start */
+  unsigned long long upper; /* Index in vector from which current MPI process should end */
+  unsigned long long n_items; /* Number of items within range (lower to upper) */
 }Chunk_Info_t;
 
 Chunk_Info_t calculate_chunk(int processes, int rank_id, unsigned long long *vector_size)
 {
   Chunk_Info_t chunk_info;
 
+  //The array size to be created from this value is zero based
+  //So this needs to be increased by one so the correct start
+  //and end indexes as well as number of elements to compute.
   (*vector_size)++;
+
+  //Next get the size of the chunk the current process needs 
   unsigned long long local_vector_size = (*vector_size) / processes;
-  chunk_info.lower = (local_vector_size * rank_id) + 0;
+
+  //Calculates the start position in the vector for the current process 
+  chunk_info.lower = local_vector_size * rank_id;
+
+  //Calculate the end of the chunk
   chunk_info.upper = chunk_info.lower + (local_vector_size - 1);
 
+  //The last process needs to handle any extra vector elements
   if(rank_id == (processes - 1))
   {
     chunk_info.upper = chunk_info.upper + (*vector_size % processes);
   }
 
+  //Finally determine how many elements are in the chunk
   chunk_info.n_items = (chunk_info.upper - chunk_info.lower) + 1;
   
   return chunk_info;
