@@ -26,6 +26,31 @@ do{                                                                             
   }                                                                                             \
 }while(0);
 
+typedef struct {
+  unsigned long long lower;
+  unsigned long long upper;
+  unsigned long long n_items;
+}Chunk_Info_t;
+
+Chunk_Info_t calculate_chunk(int processes, int rank_id, unsigned long long *vector_size)
+{
+  Chunk_Info_t chunk_info;
+
+  (*vector_size)++;
+  unsigned long long local_vector_size = (*vector_size) / processes;
+  chunk_info.lower = (local_vector_size * rank_id) + 0;
+  chunk_info.upper = chunk_info.lower + (local_vector_size - 1);
+
+  if(rank_id == (processes - 1))
+  {
+    chunk_info.upper = chunk_info.upper + (*vector_size % processes);
+  }
+
+  chunk_info.n_items = (chunk_info.upper - chunk_info.lower) + 1;
+  
+  return chunk_info;
+}
+
 FTIT_type U_LL;
 
 __global__ void vector_add(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
@@ -65,24 +90,10 @@ int main(int argc, char *argv[])
 
   unsigned long long vector_size = strtoull(argv[1], NULL, 10);
   unsigned long long iterations = strtoull(argv[2], NULL, 10);
-  unsigned long long lower = 0;
-  unsigned long long upper = 0;
-  unsigned long long n_items = 0;
-  vector_size++;
 
-  unsigned long long local_vector_size = vector_size / processes;
+  Chunk_Info_t chunk_info = calculate_chunk(processes, rank_id, &vector_size);
 
-  lower = (local_vector_size * rank_id) + 0;
-  upper = lower + (local_vector_size - 1);
-
-  if(rank_id == (processes - 1))
-  {
-    upper = upper + (vector_size % processes);
-  }
-
-  n_items = (upper - lower) + 1;
-
-  size_t size = n_items * sizeof(unsigned long long);
+  size_t size = chunk_info.n_items * sizeof(unsigned long long);
 
   unsigned long long *h_a = (unsigned long long *)malloc(size);
   unsigned long long *h_b = (unsigned long long *)malloc(size);
@@ -108,7 +119,7 @@ int main(int argc, char *argv[])
 
   unsigned long long idx = 0;
   /* Initialize vectors */
-  for(i = lower; i <= upper; i++)
+  for(i = chunk_info.lower; i <= chunk_info.upper; i++)
   {
     h_a[idx] = i;
     h_b[idx] = i; 
@@ -119,7 +130,7 @@ int main(int argc, char *argv[])
   CUDA_ERROR_CHECK(cudaMemcpy((void *)d_b, (const void*)h_b, size, cudaMemcpyHostToDevice));
  
   unsigned long long block_size = 1024; 
-  unsigned long long grid_size = (unsigned long long)(ceill((long double)n_items/(long double)block_size));
+  unsigned long long grid_size = (unsigned long long)(ceill((long double)chunk_info.n_items/(long double)block_size));
 
   FTI_Protect(0, &i, NULL, 1, U_LL);
   FTI_Protect(1, &local_sum, NULL, 1, U_LL);
@@ -127,13 +138,13 @@ int main(int argc, char *argv[])
   for(i = 0; i < iterations; i++)
   {
     FTI_Snapshot();
-    vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, n_items);
+    vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
   
     CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
  
-    for(j = 0; j < n_items; j++)
+    for(j = 0; j < chunk_info.n_items; j++)
     {
       local_sum = local_sum + h_c[j];
     }
@@ -149,7 +160,7 @@ int main(int argc, char *argv[])
       global_sum = global_sum + local_sum;
     }
 
-    unsigned long long expected_global_sum = 0;// = 2 * vector_size * processes * iterations;
+    unsigned long long expected_global_sum = 0;
     unsigned long long j = 0;
     for(j = 0; j < vector_size; j++)
     {
