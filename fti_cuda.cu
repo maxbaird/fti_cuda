@@ -146,12 +146,13 @@ int main(int argc, char *argv[])
   unsigned long long block_size = 1024; 
   unsigned long long grid_size = (unsigned long long)(ceill((long double)chunk_info.n_items/(long double)block_size));
 
-  FTI_Protect(0, &i, NULL, 1, U_LL);
-  FTI_Protect(1, &local_sum, NULL, 1, U_LL);
+  FTI_Protect(0, &i, 1, U_LL);
+  FTI_Protect(1, &local_sum, 1, U_LL);
 
   for(i = 0; i < iterations; i++)
   {
     FTI_Snapshot();
+    local_sum = 0;
     vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
