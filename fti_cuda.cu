@@ -80,11 +80,24 @@ __global__ void vector_add(const unsigned long long *a, const unsigned long long
   c[id] = a[id] + b[id];
 }
 
+__global__ void increment(unsigned long long *c, unsigned long long n)
+{
+
+  unsigned long long id = blockIdx.x*blockDim.x+threadIdx.x;
+
+  if(id > n)
+  {
+    return;
+  }
+
+  c[id] = c[id] + 1;
+}
+
 int main(int argc, char *argv[])
 {
-  if(argc != 3)
+  if(argc != 4)
   {
-    fprintf(stderr, "Usage: %s <vector-size> <iterations>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <vector-size> <iterations> <execute first kernel loop(1 or 0)>\n", argv[0]);
     exit(EXIT_FAILURE);
   }
   
@@ -104,6 +117,7 @@ int main(int argc, char *argv[])
 
   unsigned long long vector_size = strtoull(argv[1], NULL, 10);
   unsigned long long iterations = strtoull(argv[2], NULL, 10);
+  int execute_first_kernel_loop = strtol(argv[3], NULL, 10);
 
   Chunk_Info_t chunk_info = calculate_chunk(processes, rank_id, &vector_size);
 
@@ -146,21 +160,56 @@ int main(int argc, char *argv[])
   unsigned long long block_size = 1024; 
   unsigned long long grid_size = (unsigned long long)(ceill((long double)chunk_info.n_items/(long double)block_size));
 
+  unsigned long long k = 0;
+
   FTI_Protect(0, &i, 1, U_LL);
   FTI_Protect(1, &local_sum, 1, U_LL);
+  //FTI_Protect(2, d_c, chunk_info.n_items, U_LL);
 
-  FTI_Protect(2, d_c, chunk_info.n_items, U_LL);
-
-  for(i = 0; i < iterations; i++)
+  if(execute_first_kernel_loop == 1)
   {
-    FTI_Snapshot();
-    local_sum = 0;
-    vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+    if(rank_id == 0)
+    {
+      fprintf(stdout, "%d: Within compute loop\n", rank_id);
+      fflush(stdout);
+    }
+
+    for(i = 0; i < iterations; i++)
+    {
+      FTI_Snapshot();
+      local_sum = 0;
+
+      vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+      KERNEL_ERROR_CHECK();
+      CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+    
+      CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
+ 
+      for(j = 0; j < chunk_info.n_items; j++)
+      {
+        local_sum = local_sum + h_c[j];
+      }
+    }
+  }
+  
+  FTI_Snapshot();
+  unsigned long long tmp = local_sum;
+
+  for(k = 0; k < iterations; k++)
+  {
+    if(k == 0)
+    {
+      fprintf(stdout, "%d: Now incrementing result\n", rank_id);
+      fflush(stdout);
+    }
+
+    local_sum = tmp;
+
+    increment<<<grid_size, block_size>>>(d_c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-  
     CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
- 
+
     for(j = 0; j < chunk_info.n_items; j++)
     {
       local_sum = local_sum + h_c[j];
@@ -183,6 +232,7 @@ int main(int argc, char *argv[])
     {
       expected_global_sum = expected_global_sum + (j + j);
     }
+    expected_global_sum = (expected_global_sum * 2) + (vector_size * iterations);
     if(expected_global_sum == global_sum)
     {
       fprintf(stdout, "Result: Pass\n");
