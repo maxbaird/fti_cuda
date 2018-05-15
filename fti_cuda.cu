@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 
   FTI_Protect(0, &i, 1, U_LL);
   FTI_Protect(1, &local_sum, 1, U_LL);
-  //FTI_Protect(2, d_c, chunk_info.n_items, U_LL);
+  FTI_Protect(2, d_c, chunk_info.n_items, U_LL);
 
   if(execute_first_kernel_loop == 1)
   {
