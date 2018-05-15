@@ -123,39 +123,39 @@ int main(int argc, char *argv[])
 
   size_t size = chunk_info.n_items * sizeof(unsigned long long);
 
-  unsigned long long *h_a = (unsigned long long *)malloc(size);
-  unsigned long long *h_b = (unsigned long long *)malloc(size);
-  unsigned long long *h_c = (unsigned long long *)malloc(size);
+  //unsigned long long *h_a = (unsigned long long *)malloc(size);
+  //unsigned long long *h_b = (unsigned long long *)malloc(size);
+  //unsigned long long *h_c = (unsigned long long *)malloc(size);
 
-  if(h_a == NULL || h_b == NULL || h_c == NULL)
-  {
-    fprintf(stderr, "Failed to allocate %zu bytes!\n", size);
-    exit(EXIT_FAILURE);
-  }
+  //if(h_a == NULL || h_b == NULL || h_c == NULL)
+  //{
+  //  fprintf(stderr, "Failed to allocate %zu bytes!\n", size);
+  //  exit(EXIT_FAILURE);
+  //}
 
-  unsigned long long *d_a = NULL;
-  unsigned long long *d_b = NULL;
-  unsigned long long *d_c = NULL;
+  unsigned long long *a = NULL;
+  unsigned long long *b = NULL;
+  unsigned long long *c = NULL;
 
   unsigned long long i = 0;
   unsigned long long j = 0;
   unsigned long long local_sum = 0;
 
-  CUDA_ERROR_CHECK(cudaMalloc((void **)&d_a, size));
-  CUDA_ERROR_CHECK(cudaMalloc((void **)&d_b, size));
-  CUDA_ERROR_CHECK(cudaMalloc((void **)&d_c, size));
+  CUDA_ERROR_CHECK(cudaMallocManaged((void **)&a, size));
+  CUDA_ERROR_CHECK(cudaMallocManaged((void **)&b, size));
+  CUDA_ERROR_CHECK(cudaMallocManaged((void **)&c, size));
 
   unsigned long long idx = 0;
   /* Initialize vectors */
   for(i = chunk_info.lower; i <= chunk_info.upper; i++)
   {
-    h_a[idx] = i;
-    h_b[idx] = i; 
+    a[idx] = i;
+    b[idx] = i; 
     idx++;
   } 
 
-  CUDA_ERROR_CHECK(cudaMemcpy((void *)d_a, (const void*)h_a, size, cudaMemcpyHostToDevice));
-  CUDA_ERROR_CHECK(cudaMemcpy((void *)d_b, (const void*)h_b, size, cudaMemcpyHostToDevice));
+  //CUDA_ERROR_CHECK(cudaMemcpy((void *)d_a, (const void*)h_a, size, cudaMemcpyHostToDevice));
+  //CUDA_ERROR_CHECK(cudaMemcpy((void *)d_b, (const void*)h_b, size, cudaMemcpyHostToDevice));
  
   unsigned long long block_size = 1024; 
   unsigned long long grid_size = (unsigned long long)(ceill((long double)chunk_info.n_items/(long double)block_size));
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 
   FTI_Protect(0, &i, 1, U_LL);
   FTI_Protect(1, &local_sum, 1, U_LL);
-  FTI_Protect(2, d_c, chunk_info.n_items, U_LL);
+  FTI_Protect(2, c, chunk_info.n_items, U_LL);
 
   if(execute_first_kernel_loop == 1)
   {
@@ -179,15 +179,15 @@ int main(int argc, char *argv[])
       FTI_Snapshot();
       local_sum = 0;
 
-      vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+      vector_add<<<grid_size, block_size>>>(a, b, c, chunk_info.n_items);
       KERNEL_ERROR_CHECK();
       CUDA_ERROR_CHECK(cudaDeviceSynchronize());
     
-      CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
+      //CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
  
       for(j = 0; j < chunk_info.n_items; j++)
       {
-        local_sum = local_sum + h_c[j];
+        local_sum = local_sum + c[j];
       }
     }
   }
@@ -205,14 +205,14 @@ int main(int argc, char *argv[])
 
     local_sum = tmp;
 
-    increment<<<grid_size, block_size>>>(d_c, chunk_info.n_items);
+    increment<<<grid_size, block_size>>>(c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-    CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
+    //CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
 
     for(j = 0; j < chunk_info.n_items; j++)
     {
-      local_sum = local_sum + h_c[j];
+      local_sum = local_sum + c[j];
     }
   }
 
@@ -253,13 +253,13 @@ int main(int argc, char *argv[])
   }
 
   /* Housekeeping... */
-  free(h_a);
-  free(h_b);
-  free(h_c);
+  //free(h_a);
+  //free(h_b);
+  //free(h_c);
 
-  CUDA_ERROR_CHECK(cudaFree((void *)d_a));
-  CUDA_ERROR_CHECK(cudaFree((void *)d_b));
-  CUDA_ERROR_CHECK(cudaFree((void *)d_c));
+  CUDA_ERROR_CHECK(cudaFree((void *)a));
+  CUDA_ERROR_CHECK(cudaFree((void *)b));
+  CUDA_ERROR_CHECK(cudaFree((void *)c));
 
   CUDA_ERROR_CHECK(cudaDeviceReset());
   FTI_Finalize();
