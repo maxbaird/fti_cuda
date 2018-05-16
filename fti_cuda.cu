@@ -123,16 +123,6 @@ int main(int argc, char *argv[])
 
   size_t size = chunk_info.n_items * sizeof(unsigned long long);
 
-  //unsigned long long *h_a = (unsigned long long *)malloc(size);
-  //unsigned long long *h_b = (unsigned long long *)malloc(size);
-  //unsigned long long *h_c = (unsigned long long *)malloc(size);
-
-  //if(h_a == NULL || h_b == NULL || h_c == NULL)
-  //{
-  //  fprintf(stderr, "Failed to allocate %zu bytes!\n", size);
-  //  exit(EXIT_FAILURE);
-  //}
-
   unsigned long long *a = NULL;
   unsigned long long *b = NULL;
   unsigned long long *c = NULL;
@@ -154,9 +144,6 @@ int main(int argc, char *argv[])
     idx++;
   } 
 
-  //CUDA_ERROR_CHECK(cudaMemcpy((void *)d_a, (const void*)h_a, size, cudaMemcpyHostToDevice));
-  //CUDA_ERROR_CHECK(cudaMemcpy((void *)d_b, (const void*)h_b, size, cudaMemcpyHostToDevice));
- 
   unsigned long long block_size = 1024; 
   unsigned long long grid_size = (unsigned long long)(ceill((long double)chunk_info.n_items/(long double)block_size));
 
@@ -183,8 +170,6 @@ int main(int argc, char *argv[])
       KERNEL_ERROR_CHECK();
       CUDA_ERROR_CHECK(cudaDeviceSynchronize());
     
-      //CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
- 
       for(j = 0; j < chunk_info.n_items; j++)
       {
         local_sum = local_sum + c[j];
@@ -208,7 +193,6 @@ int main(int argc, char *argv[])
     increment<<<grid_size, block_size>>>(c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-    //CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
 
     for(j = 0; j < chunk_info.n_items; j++)
     {
@@ -253,10 +237,6 @@ int main(int argc, char *argv[])
   }
 
   /* Housekeeping... */
-  //free(h_a);
-  //free(h_b);
-  //free(h_c);
-
   CUDA_ERROR_CHECK(cudaFree((void *)a));
   CUDA_ERROR_CHECK(cudaFree((void *)b));
   CUDA_ERROR_CHECK(cudaFree((void *)c));
