@@ -2,9 +2,9 @@
 [basic]
 head                           = 0
 node_size                      = 2
-ckpt_dir                       = /home/mbaird/my_tmp/fti_dirs/ckpt
-glbl_dir                       = /home/mbaird/my_tmp/fti_dirs/glbl
-meta_dir                       = /home/mbaird/my_tmp/fti_dirs/meta
+ckpt_dir                       = /home/maxx/my_tmp/fti_dirs/ckpt
+glbl_dir                       = /home/maxx/my_tmp/fti_dirs/glbl
+meta_dir                       = /home/maxx/my_tmp/fti_dirs/meta
 ckpt_l1                        = 1
 ckpt_l2                        = 5
 ckpt_l3                        = 7

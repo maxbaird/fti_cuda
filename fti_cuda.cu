@@ -29,7 +29,7 @@ do{                                                                             
 }while(0);
 
 /* Iterate vector addition in kernel to simulate long-running kernel */
-#define ITERATIONS 1e6
+#define ITERATIONS 1//e6
 
 #define BUFFER 128
 
