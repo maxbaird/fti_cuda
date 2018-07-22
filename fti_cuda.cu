@@ -5,6 +5,8 @@
 #include <fti.h>
 
 #define MASTER 0
+#define DO_IF_MASTER()          \
+  if(rank_id == MASTER)         
 
 #define CUDA_ERROR_CHECK(fun)                                                                   \
 do{                                                                                             \
@@ -25,6 +27,11 @@ do{                                                                             
     exit(EXIT_FAILURE);                                                                         \
   }                                                                                             \
 }while(0);
+
+/* Iterate vector addition in kernel to simulate long-running kernel */
+#define ITERATIONS 1e6
+
+#define BUFFER 128
 
 /*
    Holds the chunk information for each MPI process.
@@ -69,7 +76,7 @@ FTIT_type U_LL;
 
 __global__ void 
 //vector_add(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
-FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
+FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
 {
   FTI_CONTINUE();
   /* Get our global thread ID */
@@ -80,7 +87,14 @@ FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long
     return;
   }
 
-  c[id] = a[id] + b[id];
+  for(unsigned long long i = 0; i < ITERATIONS; i++)
+  {
+    //if(rank_id == 6 || rank_id == 7 or rank_id == 8)
+    //{
+    //  printf("Looping in kernel: %d\n", rank_id);
+    //}
+    c[id] = a[id] + b[id];
+  }
 }
 
 __global__ void increment(unsigned long long *c, unsigned long long n)
@@ -96,6 +110,12 @@ __global__ void increment(unsigned long long *c, unsigned long long n)
   c[id] = c[id] + 1;
 }
 
+void print(FILE *stream, const char *str)
+{
+  fprintf(stream, str);
+  fflush(stream);
+}
+
 int main(int argc, char *argv[])
 {
   if(argc != 4)
@@ -108,6 +128,7 @@ int main(int argc, char *argv[])
   int processes = 0;
 
   char config_path[] = "config.fti";
+  char str[BUFFER];
 
   MPI_Init(&argc, &argv);
   FTI_Init(config_path, MPI_COMM_WORLD);
@@ -179,14 +200,24 @@ int main(int argc, char *argv[])
 
     for(i = 0; i < iterations; i++)
     {
-      FTI_Snapshot();
+      //int res = FTI_Snapshot();
+
+      //DO_IF_MASTER()
+      //if(res == FTI_DONE)
+      //{
+      //  fprintf(stdout, "Did a snapshot from the iteration loop\n");
+      //  fflush(stdout);
+      //}
+
       local_sum = 0;
 
       //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-      FTI_KERNEL_LAUNCH(0.011, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
+      FTI_KERNEL_LAUNCH(20.0, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
       KERNEL_ERROR_CHECK();
       CUDA_ERROR_CHECK(cudaDeviceSynchronize());
     
+      //sprintf(str, "%d: main kernel finished\n", rank_id);
+      //print(stderr, str);
       CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
  
       for(j = 0; j < chunk_info.n_items; j++)
@@ -196,7 +227,7 @@ int main(int argc, char *argv[])
     }
   }
   
-  FTI_Snapshot();
+  //FTI_Snapshot();
   unsigned long long tmp = local_sum;
 
   for(k = 0; k < iterations; k++)
@@ -239,17 +270,20 @@ int main(int argc, char *argv[])
     expected_global_sum = (expected_global_sum * 2) + (vector_size * iterations);
     if(expected_global_sum == global_sum)
     {
-      fprintf(stdout, "Result: Pass\n");
+      print(stdout, "Result: Pass\n");
     }
     else
     {
-      fprintf(stderr, "%llu != %llu\n", expected_global_sum, global_sum);
-      fprintf(stderr, "Result: Failed\n");
+      sprintf(str, "%llu != %llu\n", expected_global_sum, global_sum);
+      print(stderr, str);
+      print(stderr, "Result: Failed\n");
     }
 
-    fprintf(stdout, "Sum: %llu\n", global_sum);
+    sprintf(str, "Sum: %llu\n", global_sum);
+    print(stdout, str);
     double end = MPI_Wtime();
-    fprintf(stdout, "Time: %f seconds\n", end - start);
+    sprintf(str, "Time: %f seconds\n", end - start);
+    fprintf(stdout, str);
   }
   else
   {
