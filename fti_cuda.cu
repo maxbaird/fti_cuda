@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#include <unistd.h>
 #include <fti.h>
 
 #define MASTER 0
@@ -29,7 +30,7 @@ do{                                                                             
 }while(0);
 
 /* Iterate vector addition in kernel to simulate long-running kernel */
-#define ITERATIONS 1e6
+#define ITERATIONS 1//e6
 
 #define BUFFER 128
 
@@ -89,10 +90,6 @@ FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long
 
   for(unsigned long long i = 0; i < ITERATIONS; i++)
   {
-    //if(rank_id == 6 || rank_id == 7 or rank_id == 8)
-    //{
-    //  printf("Looping in kernel: %d\n", rank_id);
-    //}
     c[id] = a[id] + b[id];
   }
 }
@@ -200,7 +197,7 @@ int main(int argc, char *argv[])
 
     for(i = 0; i < iterations; i++)
     {
-      //int res = FTI_Snapshot();
+      int res = FTI_Snapshot();
 
       //DO_IF_MASTER()
       //if(res == FTI_DONE)
@@ -212,12 +209,14 @@ int main(int argc, char *argv[])
       local_sum = 0;
 
       //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-      FTI_KERNEL_LAUNCH(20.0, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
+      //FTI_KERNEL_LAUNCH(rank_id, 0.0001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
+      //sleep(55);
+      fprintf(stdout, "%d block_size: %llu grid_size: %llu\n", rank_id, block_size, grid_size); 
+      fflush(stdout);
+      FTI_KERNEL_LAUNCH(0.000001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
       KERNEL_ERROR_CHECK();
       CUDA_ERROR_CHECK(cudaDeviceSynchronize());
     
-      //sprintf(str, "%d: main kernel finished\n", rank_id);
-      //print(stderr, str);
       CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
  
       for(j = 0; j < chunk_info.n_items; j++)
@@ -232,11 +231,11 @@ int main(int argc, char *argv[])
 
   for(k = 0; k < iterations; k++)
   {
-    if(k == 0)
-    {
-      fprintf(stdout, "%d: Now incrementing result\n", rank_id);
-      fflush(stdout);
-    }
+    //if(k == 0)
+    //{
+    //  fprintf(stdout, "%d: Now incrementing result\n", rank_id);
+    //  fflush(stdout);
+    //}
 
     local_sum = tmp;
 
