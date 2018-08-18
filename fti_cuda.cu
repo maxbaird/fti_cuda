@@ -181,6 +181,11 @@ int main(int argc, char *argv[])
 
   local_sum = 0;
 
+  if(FTI_Status() != 0)
+  {
+    FTI_Recover();
+  }
+
   //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
   //FTI_KERNEL_LAUNCH(rank_id, 0.0001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
   FTI_KERNEL_LAUNCH(0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
