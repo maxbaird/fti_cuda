@@ -1,5 +1,6 @@
 PROJECT						= fti_cuda.out
 NVCC							= nvcc
+#NVCC_FLAGS				= -c -lineinfo -I${MPI_HOME}/include/ -I${FTI_HOME}/include -Xcompiler -Wall,-Wextra,-Werror
 NVCC_FLAGS				= -c -I${MPI_HOME}/include/ -I${FTI_HOME}/include -Xcompiler -Wall,-Wextra,-Werror
 MPICC							= mpicc
 LIBS							= /cm/shared/apps/cuda90/toolkit/current/targets/x86_64-linux/lib/stubs

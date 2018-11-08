@@ -187,7 +187,6 @@ int main(int argc, char *argv[])
   }
 
   //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-  //FTI_KERNEL_LAUNCH(rank_id, 0.0001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
   FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
   KERNEL_ERROR_CHECK();
   CUDA_ERROR_CHECK(cudaDeviceSynchronize());
