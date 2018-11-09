@@ -74,10 +74,10 @@ Chunk_Info_t calculate_chunk(int processes, int rank_id, unsigned long long *vec
 FTIT_type U_LL;
 
 __global__ void 
-vector_add(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
-//FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
+//vector_add(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
+FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
 {
- // FTI_CONTINUE();
+  FTI_CONTINUE();
   /* Get our global thread ID */
   unsigned long long id = blockIdx.x*blockDim.x+threadIdx.x;
 
@@ -90,10 +90,10 @@ vector_add(const unsigned long long *a, const unsigned long long *b, unsigned lo
 }
 
 __global__ void 
-vector_add2(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
-//FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
+//vector_add2(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
+FTI_KERNEL_DEF(vector_add2, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
 {
- // FTI_CONTINUE();
+  FTI_CONTINUE();
   /* Get our global thread ID */
   unsigned long long id = blockIdx.x*blockDim.x+threadIdx.x;
 
@@ -203,12 +203,16 @@ int main(int argc, char *argv[])
     FTI_Recover();
   }
 
-  vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-  //FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
+  //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+  FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
   KERNEL_ERROR_CHECK();
   CUDA_ERROR_CHECK(cudaDeviceSynchronize());
   
-  vector_add2<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+  fprintf(stdout, "Now adding vector second time!\n");
+  fflush(stdout);
+
+  //vector_add2<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+  FTI_Protect_Kernel(22, 0.00001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
   KERNEL_ERROR_CHECK();
   CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 
@@ -220,8 +224,8 @@ int main(int argc, char *argv[])
   }
   
   //TODO what's the point of the following two lines???!
-  unsigned long long tmp = local_sum;
-  local_sum = tmp;
+  //unsigned long long tmp = local_sum;
+  //local_sum = tmp;
 
   increment<<<grid_size, block_size>>>(d_c, chunk_info.n_items);
   KERNEL_ERROR_CHECK();
