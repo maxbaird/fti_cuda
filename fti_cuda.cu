@@ -75,7 +75,7 @@ FTIT_type U_LL;
 
 __global__ void 
 //vector_add(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
-FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
+FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
 {
   FTI_CONTINUE();
   /* Get our global thread ID */
@@ -91,7 +91,7 @@ FTI_KERNEL_DEF(vector_add, const unsigned long long *a, const unsigned long long
 
 __global__ void 
 //vector_add2(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
-FTI_KERNEL_DEF(vector_add2, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n, int rank_id)
+FTI_KERNEL_DEF(vector_add2, const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n)
 {
   FTI_CONTINUE();
   /* Get our global thread ID */
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
   }
 
   //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-  FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
+  FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
   KERNEL_ERROR_CHECK();
   CUDA_ERROR_CHECK(cudaDeviceSynchronize());
   
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
   fflush(stdout);
 
   //vector_add2<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-  FTI_Protect_Kernel(22, 0.00001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items, rank_id);
+  FTI_Protect_Kernel(22, 0.00001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
   KERNEL_ERROR_CHECK();
   CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 
