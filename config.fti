@@ -1,6 +1,6 @@
 
 [basic]
-head                           = 1
+head                           = 0
 node_size                      = 2
 ckpt_dir                       = /home/mbaird/my_tmp/fti_dirs/ckpt
 glbl_dir                       = /home/mbaird/my_tmp/fti_dirs/glbl
@@ -21,7 +21,7 @@ verbosity                      = 2
 
 [restart]
 failure                        = 0
-exec_id                        = 2018-05-09_18-37-01
+exec_id                        = 2018-11-14_18-43-57
 
 
 [injection]
