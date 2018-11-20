@@ -1,6 +1,6 @@
 
 [basic]
-head                           = 1
+head                           = 0
 node_size                      = 2
 ckpt_dir                       = /home/mbaird/my_tmp/fti_dirs/ckpt
 glbl_dir                       = /home/mbaird/my_tmp/fti_dirs/glbl

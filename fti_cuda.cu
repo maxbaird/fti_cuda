@@ -126,7 +126,7 @@ void print(FILE *stream, const char *str)
 
 int main(int argc, char *argv[])
 {
-  if(argc != 2)
+  if(argc != 3)
   {
     fprintf(stderr, "Usage: %s <vector-size>\n", argv[0]);
     exit(EXIT_FAILURE);
@@ -148,8 +148,7 @@ int main(int argc, char *argv[])
   FTI_InitType(&U_LL, sizeof(unsigned long long));
 
   unsigned long long vector_size = strtoull(argv[1], NULL, 10);
-  //unsigned long long iterations = strtoull(argv[2], NULL, 10);
-  //int execute_first_kernel_loop = strtol(argv[3], NULL, 10);
+  unsigned long long iterations = strtoull(argv[2], NULL, 10);
 
   Chunk_Info_t chunk_info = calculate_chunk(processes, rank_id, &vector_size);
 
@@ -202,39 +201,37 @@ int main(int argc, char *argv[])
   {
     FTI_Recover();
   }
-
-  //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-  FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
-  KERNEL_ERROR_CHECK();
-  CUDA_ERROR_CHECK(cudaDeviceSynchronize());
   
-  fprintf(stdout, "Now adding vector second time!\n");
-  fflush(stdout);
+  for(i = 0; i < iterations; i++){
+    //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+    FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
+    KERNEL_ERROR_CHECK();
+    CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+    
+    fprintf(stdout, "Now adding vector second time!\n");
+    fflush(stdout);
 
-  //vector_add2<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-  FTI_Protect_Kernel(22, 0.00001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
-  KERNEL_ERROR_CHECK();
-  CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+    //vector_add2<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
+    FTI_Protect_Kernel(22, 0.00001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
+    KERNEL_ERROR_CHECK();
+    CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 
-  CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
+    CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
  
-  for(j = 0; j < chunk_info.n_items; j++)
-  {
-    local_sum = local_sum + h_c[j];
-  }
-  
-  //TODO what's the point of the following two lines???!
-  //unsigned long long tmp = local_sum;
-  //local_sum = tmp;
+    for(j = 0; j < chunk_info.n_items; j++)
+    {
+      local_sum = local_sum + h_c[j];
+    }
 
-  increment<<<grid_size, block_size>>>(d_c, chunk_info.n_items);
-  KERNEL_ERROR_CHECK();
-  CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-  CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
+    increment<<<grid_size, block_size>>>(d_c, chunk_info.n_items);
+    KERNEL_ERROR_CHECK();
+    CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+    CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
 
-  for(j = 0; j < chunk_info.n_items; j++)
-  {
-    local_sum = local_sum + h_c[j];
+    for(j = 0; j < chunk_info.n_items; j++)
+    {
+      local_sum = local_sum + h_c[j];
+    }
   }
 
   if(rank_id == MASTER)
