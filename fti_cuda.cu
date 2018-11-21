@@ -197,12 +197,13 @@ int main(int argc, char *argv[])
 
   local_sum = 0;
 
-  if(FTI_Status() != 0)
-  {
-    FTI_Recover();
-  }
+  //if(FTI_Status() != 0)
+  //{
+  //  FTI_Recover();
+  //}
   
   for(i = 0; i < iterations; i++){
+    FTI_Snapshot();
     //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
     FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
@@ -252,6 +253,7 @@ int main(int argc, char *argv[])
       expected_global_sum = expected_global_sum + (j + j);
     }
     expected_global_sum = (expected_global_sum * totals_taken * AMT_OF_PROTECTED_KERNELS) + vector_size;
+    expected_global_sum = expected_global_sum * iterations;
     if(expected_global_sum == global_sum)
     {
       print(stdout, "Result: Pass\n");
