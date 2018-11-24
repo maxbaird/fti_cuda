@@ -201,14 +201,14 @@ int main(int argc, char *argv[])
   //{
   //  FTI_Recover();
   //}
-  
+
   for(i = 0; i < iterations; i++){
     FTI_Snapshot();
     //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
     FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-    
+
     fprintf(stdout, "Now adding vector second time!\n");
     fflush(stdout);
 
@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 
     CUDA_ERROR_CHECK(cudaMemcpy((void *)h_c, (const void *)d_c, size, cudaMemcpyDeviceToHost));
- 
+
     for(j = 0; j < chunk_info.n_items; j++)
     {
       local_sum = local_sum + h_c[j];
