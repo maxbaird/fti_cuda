@@ -30,7 +30,7 @@ do{                                                                             
 }while(0);
 
 #define BUFFER 128
-#define AMT_OF_PROTECTED_KERNELS 2
+#define AMT_OF_PROTECTED_KERNELS 1
 
 /*
    Holds the chunk information for each MPI process.
@@ -116,6 +116,21 @@ __global__ void increment(unsigned long long *c, unsigned long long n)
   }
 
   c[id] = c[id] + 1;
+}
+
+void cpu_vector_add2(const unsigned long long *a, const unsigned long long *b, unsigned long long *c, unsigned long long n){
+  unsigned long long i = 0;
+
+  for(i = 0; i < n; i++){
+    c[i] = c[i] + a[i] + b[i];
+  }
+}
+
+void cpu_increment(unsigned long long *c, unsigned long long n){
+  unsigned long long i = 0;
+  for(i = 0; i < n; i++){
+    c[i] = c[i] + 1;
+  }
 }
 
 void print(FILE *stream, const char *str)
@@ -205,15 +220,15 @@ int main(int argc, char *argv[])
   for(i = 0; i < iterations; i++){
     FTI_Snapshot();
     //vector_add<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-    FTI_Protect_Kernel(42, 0.00001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
-    KERNEL_ERROR_CHECK();
-    CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+    //FTI_Protect_Kernel(42, 0.0001, vector_add, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
+    //KERNEL_ERROR_CHECK();
+    //CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 
-    fprintf(stdout, "Now adding vector second time!\n");
-    fflush(stdout);
+    //fprintf(stdout, "Now adding vector second time!\n");
+    //fflush(stdout);
 
     //vector_add2<<<grid_size, block_size>>>(d_a, d_b, d_c, chunk_info.n_items);
-    FTI_Protect_Kernel(22, 0.00001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
+    FTI_Protect_Kernel(22, 0.0001, vector_add2, grid_size, block_size,0,0,d_a, d_b, d_c, chunk_info.n_items);
     KERNEL_ERROR_CHECK();
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 
@@ -238,7 +253,7 @@ int main(int argc, char *argv[])
   if(rank_id == MASTER)
   {
     unsigned long long global_sum = local_sum;
-    int totals_taken = 2; //Number of times local_sum was computed
+    //int totals_taken = 1; //Number of times local_sum was computed
     int i = 0;
     for(i = 1; i < processes; i++)
     {
@@ -248,12 +263,52 @@ int main(int argc, char *argv[])
 
     unsigned long long expected_global_sum = 0;
     unsigned long long j = 0;
-    for(j = 0; j < vector_size; j++)
-    {
-      expected_global_sum = expected_global_sum + (j + j);
+    unsigned long long *a = NULL;
+    unsigned long long *b = NULL;
+    unsigned long long *c = NULL;
+
+    a = (unsigned long long *)calloc(vector_size, sizeof(unsigned long long));
+    b = (unsigned long long *)calloc(vector_size, sizeof(unsigned long long));
+    c = (unsigned long long *)calloc(vector_size, sizeof(unsigned long long));
+
+    if(a == NULL){fprintf(stderr, "Error allocating space for a\n"); exit(EXIT_FAILURE);}
+    if(b == NULL){fprintf(stderr, "Error allocating space for b\n"); exit(EXIT_FAILURE);}
+    if(c == NULL){fprintf(stderr, "Error allocating space for c\n"); exit(EXIT_FAILURE);}
+
+    for(j = 0; j < vector_size; j++){
+      a[j] = j;
+      b[j] = j;
     }
-    expected_global_sum = (expected_global_sum * totals_taken * AMT_OF_PROTECTED_KERNELS) + vector_size;
-    expected_global_sum = expected_global_sum * iterations;
+
+    unsigned long long k = 0;
+
+    for(k = 0; k < iterations; k++){
+      cpu_vector_add2(a, b, c, vector_size);
+
+      for(j = 0; j < vector_size; j++){
+        expected_global_sum = expected_global_sum + c[j];
+      }
+
+      cpu_increment(c, vector_size);
+
+      for(j = 0; j < vector_size; j++){
+        expected_global_sum = expected_global_sum + c[j];
+      }
+    }
+
+    free(a);
+    free(b);
+    free(c);
+
+    //unsigned long long c = 0;
+    //for(j = 0; j < vector_size; j++)
+    //{
+    //  c = c + j + j;
+    //  expected_global_sum = expected_global_sum + c;//+ (j + j);
+    //}
+    //expected_global_sum = (expected_global_sum * totals_taken * AMT_OF_PROTECTED_KERNELS) + vector_size;
+    //expected_global_sum = expected_global_sum * iterations;
+
     if(expected_global_sum == global_sum)
     {
       print(stdout, "Result: Pass\n");
